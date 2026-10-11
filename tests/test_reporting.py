@@ -1,7 +1,11 @@
 
 import pandas as pd
 
-from data_quality_agent.reporting import build_summary, export_issues
+from data_quality_agent.reporting import (
+    build_summary,
+    export_issues,
+    issues_to_dataframe,
+)
 
 
 def test_build_summary_counts_records_and_issues():
@@ -121,3 +125,16 @@ def test_build_summary_handles_empty_dataframe():
     assert summary["percentual_registros_com_problemas"] == 0.0
     assert summary["percentual_registros_sem_problemas"] == 0.0
     assert summary["regras_com_mais_ocorrencias"] == {}
+
+
+def test_issues_to_dataframe_keeps_report_columns_for_empty_list():
+    result = issues_to_dataframe([])
+
+    assert result.empty
+    assert result.columns.tolist() == [
+        "linha",
+        "coluna",
+        "regra",
+        "valor_encontrado",
+        "descricao",
+    ]

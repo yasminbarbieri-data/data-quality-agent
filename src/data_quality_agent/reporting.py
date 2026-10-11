@@ -3,6 +3,18 @@ from pathlib import Path
 
 import pandas as pd
 
+ISSUE_COLUMNS = [
+    "linha",
+    "coluna",
+    "regra",
+    "valor_encontrado",
+    "descricao",
+]
+
+
+def issues_to_dataframe(issues: list[dict]) -> pd.DataFrame:
+    """Organiza as ocorrências no formato padrão do relatório."""
+    return pd.DataFrame(issues, columns=ISSUE_COLUMNS)
 
 
 
@@ -71,15 +83,7 @@ def export_issues(
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    columns = [
-        "linha",
-        "coluna",
-        "regra",
-        "valor_encontrado",
-        "descricao",
-    ]
-
-    df_issues = pd.DataFrame(issues, columns=columns)
+    df_issues = issues_to_dataframe(issues)
     df_issues.to_csv(path, index=False, encoding="utf-8-sig")
 
     return path

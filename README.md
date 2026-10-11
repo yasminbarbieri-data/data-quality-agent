@@ -1,6 +1,6 @@
 # Data Quality Agent
 
-Ferramenta em Python para validação da qualidade de dados tabulares em arquivos CSV e Excel (`.xlsx`). Identifica inconsistências por meio de regras determinísticas e gera relatórios CSV para apoiar a análise e a correção dos dados.
+Ferramenta em Python para validação da qualidade de dados tabulares em arquivos CSV e Excel (`.xlsx`). Identifica inconsistências por meio de regras determinísticas e apresenta os resultados em uma interface visual com indicadores, filtros e relatórios para download.
 
 ## Objetivo
 
@@ -22,6 +22,9 @@ O projeto utiliza validações explícitas em Python. Os resultados não depende
 - Cálculo do percentual de registros com e sem problemas detectados.
 - Identificação das regras com maior número de ocorrências.
 - Tratamento de arquivos sem inconsistências detectadas.
+- Interface visual em Streamlit para envio de arquivos CSV e Excel.
+- Painel com indicadores, gráfico por regra, filtros e busca nas ocorrências.
+- Download do relatório completo ou do resultado filtrado em CSV.
 - Testes automatizados com `pytest`.
 
 ## Tecnologias
@@ -29,6 +32,7 @@ O projeto utiliza validações explícitas em Python. Os resultados não depende
 - **Python:** implementação das regras e do fluxo de processamento.
 - **pandas:** leitura e manipulação dos dados tabulares.
 - **openpyxl:** suporte a arquivos Excel.
+- **Streamlit:** interface visual para análise e download dos relatórios.
 - **pytest:** testes automatizados.
 - **Git e GitHub:** versionamento e publicação do projeto.
 
@@ -64,7 +68,9 @@ data-quality-agent/
 │       └── cli.py
 ├── tests/
 ├── .gitignore
+├── app.py
 ├── README.md
+├── requirements.txt
 └── pyproject.toml
 ```
 
@@ -101,9 +107,29 @@ python -m pip install -e ".[dev]"
 
 A instalação inclui as dependências de execução declaradas pelo projeto e o `pytest`, utilizado nos testes automatizados.
 
+O projeto requer Python 3.11 ou superior.
+
 ## Execução
 
-### 1. Analisar um arquivo com inconsistências
+### 1. Interface visual
+
+Para abrir a aplicação visual, execute a partir da raiz do projeto:
+
+```powershell
+streamlit run app.py
+```
+
+O navegador abrirá a interface do **Data Quality Agent**. Envie um arquivo `.csv` ou `.xlsx` com as colunas esperadas para:
+
+- ver indicadores de registros e ocorrências;
+- identificar quais regras precisam de atenção primeiro;
+- filtrar os problemas por regra, coluna ou texto;
+- visualizar uma prévia da planilha;
+- baixar o relatório completo ou somente o resultado filtrado.
+
+Os arquivos enviados são usados apenas durante a sessão da aplicação. Para demonstrações, use dados fictícios, anonimizados ou autorizados.
+
+### 2. Analisar um arquivo com inconsistências pela linha de comando
 
 Execute a partir da raiz do projeto:
 
@@ -140,7 +166,7 @@ A regra R02 apresentou o maior número de ocorrências, com 2 identificações. 
 
 O relatório é salvo por padrão em `reports/issues.csv`.
 
-### 2. Analisar um arquivo sem ocorrências detectadas
+### 3. Analisar um arquivo sem ocorrências detectadas pela linha de comando
 
 ```powershell
 python -m data_quality_agent.cli data/samples/products_valid.csv --saida reports/valid_issues.csv
@@ -162,7 +188,7 @@ Nesse exemplo, os 5 registros passaram pelas regras de validação implementadas
 
 O relatório é salvo em `reports/valid_issues.csv`.
 
-### 3. Definir o caminho do relatório
+### 4. Definir o caminho do relatório
 
 O argumento `--saida` permite escolher onde salvar o CSV de ocorrências.
 
@@ -182,22 +208,18 @@ Para executar toda a suíte de testes:
 python -m pytest -v
 ```
 
-Durante o desenvolvimento, a suíte mais recente registrou **27 testes aprovados**.
-
-Os testes cobrem a leitura de arquivos, as validações, a geração de relatórios e o fluxo de processamento. Execute-os novamente após alterações para confirmar o estado atual do projeto.
+Os testes cobrem a leitura de arquivos locais e enviados pela interface, as validações, a geração de relatórios e o fluxo de processamento. Execute-os novamente após alterações para confirmar o estado atual do projeto.
 
 ## Limitações atuais
 
 - As regras de validação são definidas explicitamente no código.
 - As categorias permitidas correspondem ao conjunto de dados de exemplo e precisam ser adaptadas a outros contextos.
-- A ferramenta ainda não possui interface gráfica.
 - Não há integração com modelos de inteligência artificial.
 - A ausência de ocorrências significa apenas que os dados passaram pelas regras implementadas; não garante sua qualidade absoluta.
 - Os resultados apresentados correspondem aos arquivos de exemplo e não representam uma avaliação de dados de produção.
 
 ## Próximas evoluções
 
-- Desenvolver uma interface com Streamlit.
 - Tornar a configuração das regras mais flexível.
 - Ampliar os testes para outros casos-limite.
 - Avaliar uma camada de IA para explicar ocorrências em linguagem natural, mantendo as validações determinísticas como base da análise.
