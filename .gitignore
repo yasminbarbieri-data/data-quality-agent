@@ -1,0 +1,26 @@
+
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python e testes
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Ambientes e configurações locais
+.env
+.env.*
+!.env.example
+.vscode/
+
+# Arquivos temporários do sistema
+.DS_Store
+
+Thumbs.db
+# Relatórios gerados durante a execução
+reports/*.csv

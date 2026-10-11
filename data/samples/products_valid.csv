@@ -1,0 +1,6 @@
+id_produto,nome_produto,categoria,preco,quantidade_estoque,data_atualizacao
+P001,Teclado USB,Perifericos,129.90,35,2026-10-01
+P002,Mouse sem fio,Perifericos,89.90,50,2026-10-02
+P003,Monitor 24 polegadas,Monitores,799.90,12,2026-10-03
+P004,Cadeira de escritorio,Mobiliario,649.90,8,2026-10-04
+P005,Webcam HD,Perifericos,159.90,20,2026-10-05
