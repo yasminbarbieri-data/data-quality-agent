@@ -1,27 +1,17 @@
-from data_quality_agent.validators import (
-    validate_categories,
-    validate_duplicate_ids,
-    validate_dates,
-    validate_prices,
-    validate_required_fields,
-    validate_stock,
-)
-import pandas as pd
 
-from data_quality_agent.validators import (
-    validate_duplicate_ids,
-    validate_required_fields,
-)
+import pandas as pd
 
 from data_quality_agent.validators import (
     validate_categories,
     validate_dataframe,
-    validate_duplicate_ids,
     validate_dates,
+    validate_duplicate_ids,
     validate_prices,
     validate_required_fields,
     validate_stock,
 )
+
+
 def test_required_field_empty():
     df = pd.DataFrame({
         "id_produto": ["P001", "P002"],
@@ -56,6 +46,7 @@ def test_empty_ids_are_not_reported_as_duplicates():
     issues = validate_duplicate_ids(df)
 
     assert issues == []
+
 
 def test_negative_price_is_detected():
     df = pd.DataFrame({"preco": [100.0, -50.0]})
@@ -99,6 +90,7 @@ def test_invalid_calendar_date_is_detected():
     assert issues[0]["linha"] == 3
     assert issues[0]["regra"] == "R06"
 
+
 def test_validate_dataframe_consolidates_rules():
     df = pd.DataFrame({
         "id_produto": ["P001", "P001"],
@@ -123,9 +115,8 @@ def test_validate_dataframe_consolidates_rules():
         ),
     )
 
-def test_missing_required_column_is_detected():
-    from data_quality_agent.validators import validate_dataframe
 
+def test_missing_required_column_is_detected():
     df = pd.DataFrame({
         "id_produto": ["P001"],
         "nome_produto": ["Teclado USB"],
@@ -139,6 +130,7 @@ def test_missing_required_column_is_detected():
     assert len(issues) == 1
     assert issues[0]["regra"] == "R07"
     assert issues[0]["coluna"] == "preco"
+
 
 def test_infinite_price_is_detected():
     df = pd.DataFrame({
@@ -158,6 +150,34 @@ def test_infinite_price_is_detected():
     ]
 
     assert len(price_issues) == 1
+
+
+def test_zero_price_is_detected():
+    df = pd.DataFrame({"preco": [0]})
+
+    issues = validate_prices(df)
+
+    assert len(issues) == 1
+    assert issues[0]["regra"] == "R03"
+
+
+def test_non_numeric_price_is_detected():
+    df = pd.DataFrame({"preco": ["abc"]})
+
+    issues = validate_prices(df)
+
+    assert len(issues) == 1
+    assert issues[0]["regra"] == "R03"
+
+
+def test_missing_price_is_detected():
+    df = pd.DataFrame({"preco": [None]})
+
+    issues = validate_prices(df)
+
+    assert len(issues) == 1
+    assert issues[0]["regra"] == "R03"
+
 
 def test_issue_line_number_uses_dataframe_position():
     df = pd.DataFrame({
