@@ -77,3 +77,47 @@ def test_export_empty_issues_creates_csv_with_headers(tmp_path):
 
     assert len(exported) == 0
     assert "regra" in exported.columns
+
+def test_build_summary_calculates_percentages_and_top_rules():
+    df = pd.DataFrame({
+        "id_produto": ["P001", "P002", "P003", "P004"],
+    })
+
+    issues = [
+        {"linha": 2, "coluna": "preco", "regra": "R03"},
+        {"linha": 2, "coluna": "categoria", "regra": "R05"},
+        {"linha": 3, "coluna": "preco", "regra": "R03"},
+    ]
+
+    summary = build_summary(df, issues)
+
+    assert summary["percentual_registros_com_problemas"] == 50.0
+    assert summary["percentual_registros_sem_problemas"] == 50.0
+    assert summary["regras_com_mais_ocorrencias"] == {"R03": 2}
+
+
+def test_build_summary_returns_all_rules_in_a_tie():
+    df = pd.DataFrame({"id_produto": ["P001", "P002"]})
+
+    issues = [
+        {"linha": 2, "coluna": "preco", "regra": "R03"},
+        {"linha": 3, "coluna": "categoria", "regra": "R05"},
+    ]
+
+    summary = build_summary(df, issues)
+
+    assert summary["regras_com_mais_ocorrencias"] == {
+        "R03": 1,
+        "R05": 1,
+    }
+
+
+def test_build_summary_handles_empty_dataframe():
+    df = pd.DataFrame(columns=["id_produto"])
+
+    summary = build_summary(df, [])
+
+    assert summary["total_registros"] == 0
+    assert summary["percentual_registros_com_problemas"] == 0.0
+    assert summary["percentual_registros_sem_problemas"] == 0.0
+    assert summary["regras_com_mais_ocorrencias"] == {}

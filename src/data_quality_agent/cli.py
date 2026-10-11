@@ -12,13 +12,13 @@ def main() -> None:
 
     parser.add_argument(
         "arquivo",
-        help="Caminho do arquivo CSV ou XLSX que será analisado.",
+        help="Caminho do arquivo CSV ou XLSX que sera analisado.",
     )
 
     parser.add_argument(
         "--saida",
         default="reports/issues.csv",
-        help="Caminho do relatório CSV de ocorrências.",
+        help="Caminho do relatorio CSV de ocorrencias.",
     )
 
     args = parser.parse_args()
@@ -33,17 +33,36 @@ def main() -> None:
     print("\n=== DATA QUALITY AGENT ===")
     print(f"Arquivo analisado: {Path(args.arquivo).name}")
     print(f"Registros analisados: {summary['total_registros']}")
-    print(f"Ocorrências encontradas: {summary['total_ocorrencias']}")
-    print(f"Registros com problemas: {summary['registros_com_problemas']}")
-    print(f"Registros sem problemas detectados: {summary['registros_sem_problemas']}")
-    print(f"Relatório salvo em: {result['report_path']}")
+    print(f"Ocorrencias encontradas: {summary['total_ocorrencias']}")
+
+    print(
+        f"Registros com problemas: "
+        f"{summary['registros_com_problemas']} "
+        f"({summary['percentual_registros_com_problemas']:.2f}%)"
+    )
+
+    print(
+        f"Registros sem problemas detectados: "
+        f"{summary['registros_sem_problemas']} "
+        f"({summary['percentual_registros_sem_problemas']:.2f}%)"
+    )
+
+    print(f"Relatorio salvo em: {result['report_path']}")
 
     if summary["ocorrencias_por_regra"]:
-        print("\nOcorrências por regra:")
+        print("\nOcorrencias por regra:")
 
         for rule, count in sorted(
             summary["ocorrencias_por_regra"].items()
         ):
+            print(f"  {rule}: {count}")
+
+    top_rules = summary["regras_com_mais_ocorrencias"]
+
+    if top_rules:
+        print("\nRegras com mais ocorrencias:")
+
+        for rule, count in sorted(top_rules.items()):
             print(f"  {rule}: {count}")
 
 

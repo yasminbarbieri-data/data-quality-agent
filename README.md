@@ -19,6 +19,9 @@ O projeto utiliza validações explícitas em Python. Os resultados não depende
 - Verificação de colunas obrigatórias.
 - Geração de relatórios CSV com as ocorrências identificadas.
 - Resumo das ocorrências por regra.
+- Cálculo do percentual de registros com e sem problemas detectados.
+- Identificação das regras com maior número de ocorrências.
+- Tratamento de arquivos sem inconsistências detectadas.
 - Testes automatizados com `pytest`.
 
 ## Tecnologias
@@ -40,6 +43,8 @@ O projeto utiliza validações explícitas em Python. Os resultados não depende
 | R05 | Categorias fora da lista permitida |
 | R06 | Datas inválidas ou fora do formato esperado |
 | R07 | Colunas obrigatórias ausentes |
+
+As regras são aplicadas aos dados de acordo com as validações implementadas no projeto. Quando a estrutura do arquivo é inválida por ausência de colunas obrigatórias, o processamento é interrompido e o problema é informado ao usuário.
 
 ## Estrutura do projeto
 
@@ -67,92 +72,119 @@ data-quality-agent/
 
 É necessário ter Python instalado. Os comandos abaixo consideram o Windows e a execução a partir da raiz do projeto.
 
-Clone o repositório:
+### 1. Clonar o repositório
 
-```cmd
+```powershell
 git clone https://github.com/yasminbarbieri-data/data-quality-agent.git
 cd data-quality-agent
 ```
 
-Crie e ative um ambiente virtual:
+### 2. Criar e ativar um ambiente virtual
 
-```cmd
+```powershell
 python -m venv .venv
-.venv\Scripts\activate.bat
+.\.venv\Scripts\Activate.ps1
 ```
 
-Instale o projeto e as dependências de execução:
+Caso a política de execução do PowerShell impeça a ativação, é possível liberá-la somente para a sessão atual:
 
-```cmd
-python -m pip install -e .
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\.venv\Scripts\Activate.ps1
 ```
 
-Instale o `pytest` para executar os testes:
+### 3. Instalar o projeto e as dependências de desenvolvimento
 
-```cmd
-python -m pip install pytest
+```powershell
+python -m pip install -e ".[dev]"
 ```
+
+A instalação inclui as dependências de execução declaradas pelo projeto e o `pytest`, utilizado nos testes automatizados.
 
 ## Execução
 
 ### 1. Analisar um arquivo com inconsistências
 
-```cmd
+Execute a partir da raiz do projeto:
+
+```powershell
 python -m data_quality_agent.cli data/samples/products_with_issues.csv
 ```
 
 Resultado observado durante o desenvolvimento:
 
 ```text
+=== DATA QUALITY AGENT ===
+Arquivo analisado: products_with_issues.csv
 Registros analisados: 6
 Ocorrências encontradas: 7
-Registros com problemas: 5
-Registros sem problemas detectados: 1
+Registros com problemas: 5 (83.33%)
+Registros sem problemas detectados: 1 (16.67%)
+Relatório salvo em: reports\issues.csv
+
+Ocorrências por regra:
+  R01: 1
+  R02: 2
+  R03: 1
+  R04: 1
+  R05: 1
+  R06: 1
+
+Regras com mais ocorrências:
+  R02: 2
 ```
 
-O resumo por regra identificou:
+Nesse exemplo, foram analisados 6 registros e identificadas 7 ocorrências. Cinco registros apresentaram pelo menos um problema, correspondendo a 83,33% dos registros analisados.
 
-| Regra | Ocorrências |
-|---|---:|
-| R01 | 1 |
-| R02 | 2 |
-| R03 | 1 |
-| R04 | 1 |
-| R05 | 1 |
-| R06 | 1 |
+A regra R02 apresentou o maior número de ocorrências, com 2 identificações. Um mesmo registro pode conter mais de uma ocorrência.
 
 O relatório é salvo por padrão em `reports/issues.csv`.
 
 ### 2. Analisar um arquivo sem ocorrências detectadas
 
-```cmd
+```powershell
 python -m data_quality_agent.cli data/samples/products_valid.csv --saida reports/valid_issues.csv
 ```
 
 Resultado observado durante o desenvolvimento:
 
 ```text
+=== DATA QUALITY AGENT ===
+Arquivo analisado: products_valid.csv
 Registros analisados: 5
 Ocorrências encontradas: 0
-Registros com problemas: 0
-Registros sem problemas detectados: 5
+Registros com problemas: 0 (0.00%)
+Registros sem problemas detectados: 5 (100.00%)
+Relatório salvo em: reports\valid_issues.csv
 ```
 
+Nesse exemplo, os 5 registros passaram pelas regras de validação implementadas e nenhuma ocorrência foi identificada.
+
 O relatório é salvo em `reports/valid_issues.csv`.
+
+### 3. Definir o caminho do relatório
+
+O argumento `--saida` permite escolher onde salvar o CSV de ocorrências.
+
+```powershell
+python -m data_quality_agent.cli data/samples/products_with_issues.csv --saida reports/analise_produtos.csv
+```
+
+Se o caminho informado incluir diretórios inexistentes, a ferramenta cria os diretórios necessários para salvar o relatório.
 
 Os relatórios são gerados durante a execução e não são versionados pelo Git.
 
 ## Testes automatizados
 
-Para executar todos os testes:
+Para executar toda a suíte de testes:
 
-```cmd
+```powershell
 python -m pytest -v
 ```
 
-Na última execução da suíte durante o desenvolvimento, **24 testes passaram**. Eles cobrem funcionalidades de leitura de arquivos, validações, geração de relatórios e integração do fluxo de processamento.
+Durante o desenvolvimento, a suíte mais recente registrou **27 testes aprovados**.
 
-Execute os testes novamente após alterações para confirmar o estado atual do projeto.
+Os testes cobrem a leitura de arquivos, as validações, a geração de relatórios e o fluxo de processamento. Execute-os novamente após alterações para confirmar o estado atual do projeto.
 
 ## Limitações atuais
 
@@ -161,6 +193,7 @@ Execute os testes novamente após alterações para confirmar o estado atual do 
 - A ferramenta ainda não possui interface gráfica.
 - Não há integração com modelos de inteligência artificial.
 - A ausência de ocorrências significa apenas que os dados passaram pelas regras implementadas; não garante sua qualidade absoluta.
+- Os resultados apresentados correspondem aos arquivos de exemplo e não representam uma avaliação de dados de produção.
 
 ## Próximas evoluções
 
