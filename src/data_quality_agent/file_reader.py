@@ -29,7 +29,10 @@ def load_file(file_path: str | Path) -> pd.DataFrame:
         )
 
     if path.suffix.lower() == ".csv":
-        return pd.read_csv(path)
+        try:
+            return pd.read_csv(path, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            return pd.read_csv(path, encoding="latin-1")
 
     return pd.read_excel(path, engine="openpyxl")
 

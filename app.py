@@ -1,318 +1,237 @@
 """Interface Streamlit do Data Quality Agent."""
-
 from __future__ import annotations
 
+from io import BytesIO
 import pandas as pd
 import streamlit as st
 
+from data_quality_agent.ai_assistant import build_local_guidance
+from data_quality_agent.corrections import correct_dataframe
 from data_quality_agent.file_reader import load_uploaded_file
 from data_quality_agent.reporting import build_summary, issues_to_dataframe
-from data_quality_agent.validators import (
-    REQUIRED_COLUMNS,
-    validate_dataframe,
-    validate_structure,
-)
-
+from data_quality_agent.validators import REQUIRED_COLUMNS, validate_dataframe, validate_structure
 
 RULE_DESCRIPTIONS = {
-    "R01": "Campo obrigatório vazio",
-    "R02": "ID de produto duplicado",
-    "R03": "Preço inválido",
-    "R04": "Quantidade em estoque inválida",
-    "R05": "Categoria fora da lista permitida",
-    "R06": "Data inválida ou fora do formato AAAA-MM-DD",
+    "R01": "Campo obrigatório vazio", "R02": "ID de produto duplicado",
+    "R03": "Preço inválido", "R04": "Estoque inválido",
+    "R05": "Categoria não permitida", "R06": "Data inválida",
     "R07": "Coluna obrigatória ausente",
 }
-
 DISPLAY_COLUMNS = {
-    "linha": "Linha do arquivo",
-    "coluna": "Coluna",
-    "regra": "Regra",
-    "valor_encontrado": "Valor encontrado",
-    "descricao": "Descrição",
+    "linha": "Linha", "coluna": "Coluna", "regra": "Código",
+    "valor_encontrado": "Valor encontrado", "descricao": "O que foi identificado",
 }
+MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def to_csv_bytes(dataframe: pd.DataFrame) -> bytes:
-    """Gera um CSV compatível com programas de planilha no Windows."""
+    """CSV com BOM para abrir corretamente no Excel em português."""
     return dataframe.to_csv(index=False).encode("utf-8-sig")
 
 
+def to_xlsx_bytes(dataframe: pd.DataFrame, sheet_name: str = "Dados") -> bytes:
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        dataframe.to_excel(writer, index=False, sheet_name=sheet_name[:31])
+    return output.getvalue()
+
+
 def display_issues(issues: list[dict]) -> pd.DataFrame:
-    """Converte as ocorrências do núcleo para os rótulos da interface."""
     return issues_to_dataframe(issues).rename(columns=DISPLAY_COLUMNS)
 
 
-def filter_issues(
-    dataframe: pd.DataFrame,
-    selected_rules: list[str],
-    selected_columns: list[str],
-    search_text: str,
-) -> pd.DataFrame:
-    """Aplica os filtros do painel sem alterar o relatório completo."""
+def filter_issues(dataframe: pd.DataFrame, selected_rules: list[str], selected_columns: list[str], search_text: str) -> pd.DataFrame:
     filtered = dataframe.copy()
-
     if selected_rules:
-        filtered = filtered[filtered["Regra"].isin(selected_rules)]
-
+        filtered = filtered[filtered["Código"].isin(selected_rules)]
     if selected_columns:
         filtered = filtered[filtered["Coluna"].isin(selected_columns)]
-
     if search_text.strip():
         text = search_text.strip().casefold()
-        searchable = filtered[
-            ["Coluna", "Regra", "Valor encontrado", "Descrição"]
-        ].fillna("").astype(str)
-        matches = searchable.apply(
-            lambda row: text in " ".join(row).casefold(),
-            axis=1,
-        )
+        searchable = filtered[["Coluna", "Código", "Valor encontrado", "O que foi identificado"]].fillna("").astype(str)
+        matches = searchable.apply(lambda row: text in " ".join(row).casefold(), axis=1)
         filtered = filtered[matches]
-
     return filtered
 
 
 def render_styles() -> None:
-    st.markdown(
-        """
-        <style>
-            .block-container {max-width: 1180px; padding-top: 2.4rem; padding-bottom: 3rem;}
-            [data-testid="stMetric"] {
-                background: #f7f9fc;
-                border: 1px solid #e4e9f2;
-                border-radius: 14px;
-                padding: 1rem;
-            }
-            .hero-eyebrow {
-                color: #2463eb;
-                font-size: 0.8rem;
-                font-weight: 700;
-                letter-spacing: 0.08em;
-                text-transform: uppercase;
-                margin-bottom: 0.4rem;
-            }
-            .hero-copy {color: #52616b; font-size: 1.05rem; max-width: 730px;}
-            .rule-card {
-                background: #f7f9fc;
-                border-left: 4px solid #2463eb;
-                border-radius: 0 10px 10px 0;
-                padding: 0.85rem 1rem;
-                margin: 0.45rem 0;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("""
+    <style>
+      :root { --navy:#102A43; --teal:#0F7C86; --ink:#172B3A; --muted:#5C7082; --line:#DCE6ED; }
+      .stApp { background:#FFFFFF; }
+      [data-testid="stHeader"] { background:rgba(255,255,255,.96); }
+      .block-container {max-width:1380px; padding-top:1.35rem; padding-bottom:3rem;}
+      section[data-testid="stSidebar"] {background:#F3F7FA; border-right:1px solid var(--line);}
+      .hero {padding:2rem 2.1rem; border-radius:18px; background:linear-gradient(112deg,#102A43 0%,#174A72 62%,#0F7C86 100%); color:#fff; margin-bottom:1.35rem; box-shadow:0 12px 30px rgba(16,42,67,.12);}
+      .hero-kicker {font-size:.74rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#A9E0E3; margin-bottom:.7rem;}
+      .hero h1 {font-size:clamp(1.75rem,3vw,2.45rem); line-height:1.14; color:#BFEDE8; background:linear-gradient(90deg,#BFEDE8 0%,#78D7C8 52%,#A7E8C8 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; margin:0 0 .8rem 0;}
+      .hero p {font-size:1rem; line-height:1.65; color:#EAF4F7; max-width:900px; margin:0;}
+      [data-testid="stMetric"] {background:#fff; border:1px solid var(--line); padding:1.05rem 1.1rem; border-radius:14px; box-shadow:0 4px 14px rgba(16,42,67,.045); min-height:120px;}
+      [data-testid="stMetricLabel"] {color:#526779; font-size:.88rem;}
+      [data-testid="stMetricValue"] {color:var(--navy); font-weight:750;}
+      h1,h2,h3 {color:var(--navy); letter-spacing:-.025em;}
+      h2 {padding-top:.35rem;}
+      .section-note {color:#526779; font-size:.94rem; line-height:1.6;}
+      .eyebrow {color:#0F7C86; font-size:.75rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase;}
+      div[data-testid="stDownloadButton"] button {width:100%; min-height:2.65rem; border-radius:9px; font-weight:600;}
+      div.stButton > button[kind="primary"], div[data-testid="stDownloadButton"] button[kind="primary"] {background:#0F7C86; border-color:#0F7C86; color:#fff;}
+      div[data-testid="stDataFrame"] {border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+      div[data-testid="stAlert"] {border-radius:11px;}
+      .step-title {color:#102A43; font-weight:750; font-size:1rem;}
+      .step-card {background:#F6F9FB; border:1px solid #E1EAF0; border-radius:12px; padding:1rem; min-height:112px;}
+      .stCaption {color:#607789;}
+    </style>""", unsafe_allow_html=True)
 
 
 def render_empty_state() -> None:
-    st.info("Envie um arquivo CSV ou XLSX na barra lateral para iniciar a análise.")
-    st.subheader("Como a análise funciona")
-    steps = st.columns(3)
-    steps[0].markdown("**1. Envie a planilha**\n\nO arquivo não é alterado.")
-    steps[1].markdown(
-        "**2. Confira os indicadores**\n\nVeja o tamanho e o tipo dos problemas."
-    )
-    steps[2].markdown(
-        "**3. Baixe o relatório**\n\nCompartilhe as ocorrências com quem fará a correção."
-    )
-
-    with st.expander("Estrutura esperada do arquivo"):
-        st.write(
-            "A versão atual valida uma base de produtos. Os nomes das colunas "
-            "devem ser exatamente estes:"
-        )
+    st.markdown("## Da planilha ao diagnóstico, em poucos passos")
+    st.markdown('<p class="section-note">Encontre inconsistências antes que elas se transformem em retrabalho, relatórios incorretos ou decisões baseadas em dados frágeis.</p>', unsafe_allow_html=True)
+    cols = st.columns(3, gap="medium")
+    cards = [
+        ("01 · Carregue", "Envie uma base em CSV ou Excel (.xlsx)."),
+        ("02 · Entenda", "Veja indicadores, ocorrências e registros que merecem revisão."),
+        ("03 · Trate com segurança", "Exporte o diagnóstico e baixe uma cópia com ajustes inequívocos."),
+    ]
+    for col, (title, body) in zip(cols, cards):
+        with col:
+            st.markdown(f'<div class="step-card"><div class="step-title">{title}</div><p>{body}</p></div>', unsafe_allow_html=True)
+    st.write("")
+    with st.expander("Quais colunas são esperadas?"):
         st.code("\n".join(REQUIRED_COLUMNS), language=None)
-        st.caption(
-            "As regras verificam campos vazios, IDs duplicados, preço, estoque, "
-            "categoria e data de atualização."
-        )
+        st.caption("A versão atual é especializada em bases de produtos. Campos ausentes ou ambíguos não são preenchidos por suposição.")
+    st.info("Dica: comece pelos arquivos de demonstração em `data/samples/`.")
+
+
+def render_ai_assistant(issues: list[dict]) -> None:
+    """Mostra orientações locais sem depender de serviços externos."""
+    st.markdown("## Assistente de análise")
+    st.markdown(
+        '<p class="section-note">Entenda os problemas encontrados e veja próximos passos. '
+        'As orientações são geradas localmente; nenhum dado é enviado a serviços externos.</p>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        st.markdown("**Orientações locais — disponíveis sem internet**")
+        for item in build_local_guidance(issues):
+            st.markdown(
+                f"**{item['regra']} · {item['ocorrencias']} ocorrência(s)** — {item['orientacao']}"
+            )
 
 
 def render_analysis(dataframe: pd.DataFrame, file_name: str) -> None:
+    st.caption(f"ARQUIVO ANALISADO  ·  **{file_name}**  ·  {len(dataframe):,} registros".replace(",", "."))
     structure_issues = validate_structure(dataframe)
-    st.caption(
-        f"Arquivo analisado: **{file_name}** · {len(dataframe):,} registro(s)"
-        .replace(",", ".")
-    )
-
     if structure_issues:
-        issue_table = display_issues(structure_issues)
-        st.error(
-            "Não foi possível executar as validações de conteúdo porque faltam "
-            "colunas obrigatórias. Confira a estrutura e tente novamente."
-        )
-        st.dataframe(issue_table, use_container_width=True, hide_index=True)
-        st.download_button(
-            "Baixar relatório de estrutura (.csv)",
-            data=to_csv_bytes(issue_table),
-            file_name="relatorio_estrutura_invalida.csv",
-            mime="text/csv",
-        )
+        st.error("A estrutura não corresponde à base de produtos esperada. Confira as colunas obrigatórias antes de continuar.")
+        table = display_issues(structure_issues)
+        st.dataframe(table, use_container_width=True, hide_index=True)
+        st.download_button("Baixar diagnóstico de estrutura (.csv)", to_csv_bytes(table), "diagnostico_estrutura.csv", "text/csv")
         return
 
     issues = validate_dataframe(dataframe)
     summary = build_summary(dataframe, issues)
     issue_table = display_issues(issues)
+    corrected, change_log = correct_dataframe(dataframe)
+    affected_pct = summary["percentual_registros_com_problemas"]
 
     if issues:
-        st.warning(
-            "A análise foi concluída. As ocorrências abaixo indicam pontos que "
-            "merecem revisão antes do uso dos dados."
-        )
+        st.warning(f"Foram encontradas **{len(issues)} ocorrências** em **{summary['registros_com_problemas']} registro(s)**. Confira o diagnóstico antes de usar os dados.")
     else:
-        st.success(
-            "Análise concluída: nenhum problema foi detectado pelas regras atuais."
-        )
+        st.success("Nenhum problema foi identificado pelas regras de validação atuais.")
 
-    st.subheader("Visão geral")
-    metrics = st.columns(4)
-    metrics[0].metric("Registros analisados", summary["total_registros"])
-    metrics[1].metric("Ocorrências", summary["total_ocorrencias"])
-    metrics[2].metric(
-        "Registros com problemas",
-        f"{summary['registros_com_problemas']} "
-        f"({summary['percentual_registros_com_problemas']:.2f}%)",
-    )
-    metrics[3].metric(
-        "Sem problemas detectados",
-        f"{summary['registros_sem_problemas']} "
-        f"({summary['percentual_registros_sem_problemas']:.2f}%)",
-    )
+    st.markdown("## Resumo da qualidade")
+    metrics = st.columns(4, gap="medium")
+    metrics[0].metric("Registros analisados", f"{summary['total_registros']:,}".replace(",", "."))
+    metrics[1].metric("Ocorrências", f"{summary['total_ocorrencias']:,}".replace(",", "."))
+    metrics[2].metric("Registros para revisar", f"{summary['registros_com_problemas']:,}".replace(",", "."), f"{affected_pct:.1f}% da base".replace(".", ","))
+    metrics[3].metric("Ajustes seguros", f"{len(change_log):,}".replace(",", "."), "Em uma cópia, nunca no original")
 
-    left, right = st.columns([1.25, 1])
+    left, right = st.columns([1.2, 1], gap="large")
     with left:
-        st.subheader("Ocorrências por regra")
-        if issues:
-            rule_counts = (
-                issue_table.groupby("Regra", as_index=False)
-                .size()
-                .rename(columns={"size": "Ocorrências"})
-                .sort_values("Ocorrências", ascending=False)
-            )
-            st.bar_chart(rule_counts, x="Regra", y="Ocorrências", color="#2463eb")
+        st.markdown("### Onde estão os problemas")
+        if not issue_table.empty:
+            counts = issue_table.groupby("Código").size().rename("Ocorrências").reset_index()
+            counts["Problema"] = counts["Código"].map(RULE_DESCRIPTIONS)
+            counts = counts.sort_values("Ocorrências", ascending=True)
+            st.bar_chart(counts, x="Problema", y="Ocorrências", color="#0F7C86", horizontal=True)
         else:
-            st.caption("Não há ocorrências para exibir.")
-
+            st.caption("Nenhuma ocorrência para representar no gráfico.")
     with right:
-        st.subheader("O que revisar primeiro")
+        st.markdown("### Prioridades de revisão")
         if summary["regras_com_mais_ocorrencias"]:
-            for rule, count in summary["regras_com_mais_ocorrencias"].items():
-                st.markdown(
-                    "<div class='rule-card'><strong>"
-                    f"{rule} · {count} ocorrência(s)</strong><br>"
-                    f"{RULE_DESCRIPTIONS.get(rule, 'Regra de validação')}"
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
+            ordered = sorted(summary["ocorrencias_por_regra"].items(), key=lambda item: (-item[1], item[0]))
+            for rule, count in ordered[:4]:
+                st.markdown(f"**{RULE_DESCRIPTIONS.get(rule, rule)}**  \n{count} ocorrência(s) · {rule}")
+                st.progress(min(count / max(summary["total_ocorrencias"], 1), 1.0))
         else:
-            st.caption(
-                "Não há uma regra prioritária porque não foram detectadas ocorrências."
-            )
+            st.info("A base passou pelas regras de validação implementadas.")
 
-    with st.expander("Prévia dos dados enviados"):
-        st.dataframe(
-            dataframe.head(20),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    st.subheader("Ocorrências detalhadas")
-    if issue_table.empty:
-        st.caption("Nenhuma ocorrência encontrada para filtrar ou baixar.")
-        st.download_button(
-            "Baixar relatório vazio (.csv)",
-            data=to_csv_bytes(issue_table),
-            file_name="relatorio_ocorrencias.csv",
-            mime="text/csv",
-        )
-        return
-
-    filter_columns = st.columns(3)
-    selected_rules = filter_columns[0].multiselect(
-        "Filtrar por regra",
-        options=sorted(issue_table["Regra"].dropna().unique().tolist()),
-    )
-    selected_columns = filter_columns[1].multiselect(
-        "Filtrar por coluna",
-        options=sorted(issue_table["Coluna"].dropna().unique().tolist()),
-    )
-    search_text = filter_columns[2].text_input(
-        "Buscar no relatório",
-        placeholder="Ex.: preço, P003 ou inválida",
-    )
-
-    filtered = filter_issues(
-        issue_table,
-        selected_rules,
-        selected_columns,
-        search_text,
-    )
-    st.caption(f"Exibindo {len(filtered)} de {len(issue_table)} ocorrência(s).")
-    st.dataframe(filtered, use_container_width=True, hide_index=True)
-
-    downloads = st.columns(2)
-    downloads[0].download_button(
-        "Baixar relatório completo (.csv)",
-        data=to_csv_bytes(issue_table),
-        file_name="relatorio_ocorrencias.csv",
-        mime="text/csv",
-    )
-    downloads[1].download_button(
-        "Baixar resultado filtrado (.csv)",
-        data=to_csv_bytes(filtered),
-        file_name="relatorio_ocorrencias_filtrado.csv",
-        mime="text/csv",
-    )
+    st.markdown("## Explorar e exportar")
+    original_tab, diagnosis_tab, correction_tab = st.tabs(["Dados originais", "Diagnóstico", "Cópia tratada"])
+    with original_tab:
+        st.markdown('<p class="section-note">Prévia do arquivo carregado. Esta visualização não altera os dados de origem.</p>', unsafe_allow_html=True)
+        st.dataframe(dataframe.head(100), use_container_width=True, hide_index=True)
+        downloads = st.columns(2, gap="medium")
+        downloads[0].download_button("Dados originais (.csv)", to_csv_bytes(dataframe), "dados_originais.csv", "text/csv", key="download_original_csv")
+        downloads[1].download_button("Dados originais (.xlsx)", to_xlsx_bytes(dataframe, "Dados originais"), "dados_originais.xlsx", MIME_XLSX, key="download_original_xlsx")
+    with diagnosis_tab:
+        if issue_table.empty:
+            st.success("Não há ocorrências para filtrar ou exportar.")
+        else:
+            filters = st.columns([1, 1, 1.4], gap="medium")
+            rule_options = sorted(issue_table["Código"].unique())
+            column_options = sorted(issue_table["Coluna"].unique())
+            rules = filters[0].multiselect("Tipo de problema", rule_options, format_func=lambda value: f"{value} — {RULE_DESCRIPTIONS.get(value, value)}")
+            columns = filters[1].multiselect("Coluna", column_options)
+            search = filters[2].text_input("Buscar no diagnóstico", placeholder="Ex.: P003, preço, inválida")
+            filtered = filter_issues(issue_table, rules, columns, search)
+            st.caption(f"Exibindo {len(filtered)} de {len(issue_table)} ocorrências")
+            st.dataframe(filtered, use_container_width=True, hide_index=True)
+            downloads = st.columns(2, gap="medium")
+            downloads[0].download_button("Diagnóstico completo (.csv)", to_csv_bytes(issue_table), "diagnostico_completo.csv", "text/csv", key="download_diagnosis_csv")
+            downloads[1].download_button("Diagnóstico completo (.xlsx)", to_xlsx_bytes(issue_table, "Diagnóstico"), "diagnostico_completo.xlsx", MIME_XLSX, key="download_diagnosis_xlsx")
+            downloads[0].download_button("Diagnóstico filtrado (.csv)", to_csv_bytes(filtered), "diagnostico_filtrado.csv", "text/csv", key="download_filtered_csv")
+            downloads[1].download_button("Diagnóstico filtrado (.xlsx)", to_xlsx_bytes(filtered, "Diagnóstico filtrado"), "diagnostico_filtrado.xlsx", MIME_XLSX, key="download_filtered_xlsx")
+    with correction_tab:
+        st.markdown('<p class="section-note">A cópia tratada inclui apenas ajustes determinísticos e auditáveis. O arquivo original permanece intacto.</p>', unsafe_allow_html=True)
+        if change_log.empty:
+            st.info("Nenhuma correção determinística segura foi identificada. Valores ambíguos ou inválidos continuam para revisão humana.")
+        else:
+            st.success(f"{len(change_log)} ajuste(s) seguro(s) identificado(s). Confira o histórico antes de utilizar a cópia.")
+            st.dataframe(change_log, use_container_width=True, hide_index=True)
+            downloads = st.columns(2, gap="medium")
+            downloads[0].download_button("Baixar cópia corrigida (.csv)", to_csv_bytes(corrected), "produtos_corrigidos.csv", "text/csv", type="primary")
+            downloads[1].download_button("Baixar cópia corrigida (.xlsx)", to_xlsx_bytes(corrected, "Produtos"), "produtos_corrigidos.xlsx", MIME_XLSX)
+            downloads = st.columns(2, gap="medium")
+            downloads[0].download_button("Histórico de alterações (.csv)", to_csv_bytes(change_log), "historico_correcoes.csv", "text/csv", key="download_change_log_csv")
+            downloads[1].download_button("Histórico de alterações (.xlsx)", to_xlsx_bytes(change_log, "Histórico"), "historico_correcoes.xlsx", MIME_XLSX, key="download_change_log_xlsx")
+            remaining = validate_dataframe(corrected)
+            st.caption(f"Após os ajustes seguros, {len(remaining)} ocorrência(s) continuam detectadas e podem exigir revisão manual.")
+    if issues:
+        render_ai_assistant(issues)
 
 
 def main() -> None:
-    st.set_page_config(
-        page_title="Data Quality Agent",
-        page_icon="🔎",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
+    st.set_page_config(page_title="Data Quality Agent", page_icon="🔎", layout="wide", initial_sidebar_state="expanded")
     render_styles()
-
     with st.sidebar:
-        st.title("🔎 Data Quality Agent")
-        st.caption("Validação visual de dados para planilhas de produtos")
-        uploaded_file = st.file_uploader(
-            "Envie sua planilha",
-            type=["csv", "xlsx"],
-            help="Formatos aceitos: CSV e Excel (.xlsx).",
-        )
+        st.markdown("## Data Quality Agent")
+        st.caption("Diagnóstico e tratamento seguro de bases de produtos")
+        uploaded_file = st.file_uploader("Carregue sua planilha", type=["csv", "xlsx"], help="Formatos aceitos: CSV e Excel (.xlsx).")
         st.divider()
-        st.markdown("**Antes de enviar**")
-        st.caption(
-            "Use dados fictícios, anonimizados ou autorizados para demonstrações."
-        )
-        st.markdown("**Regras disponíveis**")
-        st.caption("R01–R07 · Estrutura, preenchimento, duplicidade e consistência.")
-
-    st.markdown(
-        "<p class='hero-eyebrow'>Qualidade de dados sem complicação</p>",
-        unsafe_allow_html=True,
-    )
-    st.title("Encontre problemas antes que eles virem retrabalho")
-    st.markdown(
-        "<p class='hero-copy'>Envie uma planilha para identificar campos vazios, "
-        "duplicidades e valores inconsistentes — e transforme a revisão em um "
-        "relatório claro para quem toma ou executa decisões.</p>",
-        unsafe_allow_html=True,
-    )
-
+        st.markdown("**Regras verificadas**")
+        st.caption("Campos obrigatórios · IDs duplicados · preço · estoque · categoria · data · estrutura")
+        st.info("Use dados fictícios, anonimizados ou autorizados.")
+        st.caption("O diagnóstico e as orientações locais funcionam sem serviços externos ou chaves de API.")
+    st.markdown('<section class="hero"><div class="hero-kicker">Qualidade de dados · diagnóstico e ação</div><h1>Dados confiáveis começam com uma boa validação.</h1><p>Identifique inconsistências, entenda o impacto e exporte resultados. Ajustes seguros ficam registrados em uma cópia; decisões ambíguas continuam sob revisão humana.</p></section>', unsafe_allow_html=True)
     if uploaded_file is None:
         render_empty_state()
         return
-
     try:
         dataframe = load_uploaded_file(uploaded_file, uploaded_file.name)
-    except (ValueError, OSError, pd.errors.ParserError) as error:
+    except (ValueError, OSError, pd.errors.ParserError, UnicodeDecodeError) as error:
         st.error(f"Não foi possível ler o arquivo: {error}")
         return
-
     render_analysis(dataframe, uploaded_file.name)
 
 

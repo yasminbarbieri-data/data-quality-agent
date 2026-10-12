@@ -1,233 +1,114 @@
 # Data Quality Agent
 
-Ferramenta em Python para validação da qualidade de dados tabulares em arquivos CSV e Excel (`.xlsx`). Identifica inconsistências por meio de regras determinísticas e apresenta os resultados em uma interface visual com indicadores, filtros e relatórios para download.
+Aplicação em Python e Streamlit para diagnosticar problemas de qualidade em bases de produtos, aplicar somente correções determinísticas auditáveis e exportar resultados para revisão.
 
-## Objetivo
+## O que o projeto faz
 
-Dados inconsistentes podem comprometer relatórios, indicadores e decisões de negócio. O Data Quality Agent automatiza verificações básicas de qualidade, facilitando a identificação e a investigação de problemas antes que os dados sejam utilizados em análises.
+- Lê arquivos CSV e Excel (`.xlsx`).
+- Valida a estrutura e as regras R01–R07: campos obrigatórios vazios, IDs duplicados, preço inválido, estoque inválido, categoria não permitida, data inválida e coluna obrigatória ausente.
+- Apresenta indicadores, gráfico de ocorrências, prioridades de revisão e diagnóstico filtrável por regra, coluna e texto.
+- Permite exportar os dados originais, o diagnóstico completo, o diagnóstico filtrado, a cópia tratada e o histórico de alterações em CSV ou XLSX.
+- Corrige apenas casos determinísticos, como espaços externos em campos textuais não identificadores e normalização inequívoca de maiúsculas/minúsculas em categorias permitidas.
+- Inclui orientações locais gratuitas e um assistente de IA opcional para explicar o diagnóstico agregado.
 
-O projeto utiliza validações explícitas em Python. Os resultados não dependem de modelos de inteligência artificial.
+## Limites e segurança
 
-## Funcionalidades
+- A versão atual é especializada em bases de produtos e espera estas colunas exatas: `id_produto`, `nome_produto`, `categoria`, `preco`, `quantidade_estoque`, `data_atualizacao`.
+- As categorias permitidas são `Perifericos`, `Monitores` e `Mobiliario`.
+- O arquivo original nunca é sobrescrito. A cópia tratada é um resultado separado.
+- As exportações são produzidas a partir da visualização atual, mas não modificam o arquivo nem o DataFrame recebido.
+- O sistema não inventa valores para campos vazios, preços, IDs duplicados, estoque inválido ou datas ambíguas. Esses casos continuam para revisão humana.
+- O aplicativo não depende de serviços externos nem de chaves de API. O assistente oferece orientações locais, inclusive sem internet.
+- O processamento e as orientações acontecem localmente; nenhuma planilha ou resumo é enviado a uma API externa.
+- As orientações são recomendações gerais baseadas nas regras detectadas. Revise os dados antes de utilizá-los.
+- Use apenas dados fictícios, anonimizados ou autorizados.
 
-- Leitura de arquivos CSV e Excel (`.xlsx`).
-- Verificação de campos obrigatórios vazios.
-- Identificação de IDs de produtos duplicados.
-- Validação de preços e quantidades em estoque.
-- Verificação de categorias permitidas.
-- Validação de datas, incluindo datas inexistentes no calendário.
-- Verificação de colunas obrigatórias.
-- Geração de relatórios CSV com as ocorrências identificadas.
-- Resumo das ocorrências por regra.
-- Cálculo do percentual de registros com e sem problemas detectados.
-- Identificação das regras com maior número de ocorrências.
-- Tratamento de arquivos sem inconsistências detectadas.
-- Interface visual em Streamlit para envio de arquivos CSV e Excel.
-- Painel com indicadores, gráfico por regra, filtros e busca nas ocorrências.
-- Download do relatório completo ou do resultado filtrado em CSV.
-- Testes automatizados com `pytest`.
+## Instalação no Windows
 
-## Tecnologias
+Requer Python 3.11 ou superior. A interface usa Streamlit 1.65 ou superior.
 
-- **Python:** implementação das regras e do fluxo de processamento.
-- **pandas:** leitura e manipulação dos dados tabulares.
-- **openpyxl:** suporte a arquivos Excel.
-- **Streamlit:** interface visual para análise e download dos relatórios.
-- **pytest:** testes automatizados.
-- **Git e GitHub:** versionamento e publicação do projeto.
-
-## Regras de validação
-
-| Regra | Descrição |
-|---|---|
-| R01 | Campos obrigatórios ausentes ou vazios |
-| R02 | IDs de produto duplicados |
-| R03 | Preços ausentes, não numéricos, infinitos ou menores ou iguais a zero |
-| R04 | Quantidades de estoque inválidas, negativas ou não inteiras |
-| R05 | Categorias fora da lista permitida |
-| R06 | Datas inválidas ou fora do formato esperado |
-| R07 | Colunas obrigatórias ausentes |
-
-As regras são aplicadas aos dados de acordo com as validações implementadas no projeto. Quando a estrutura do arquivo é inválida por ausência de colunas obrigatórias, o processamento é interrompido e o problema é informado ao usuário.
-
-## Estrutura do projeto
-
-```text
-data-quality-agent/
-├── data/
-│   └── samples/
-├── docs/
-│   └── validation_rules.md
-├── reports/
-├── src/
-│   └── data_quality_agent/
-│       ├── file_reader.py
-│       ├── validators.py
-│       ├── reporting.py
-│       ├── pipeline.py
-│       └── cli.py
-├── tests/
-├── .gitignore
-├── app.py
-├── README.md
-├── requirements.txt
-└── pyproject.toml
-```
-
-## Instalação
-
-É necessário ter Python instalado. Os comandos abaixo consideram o Windows e a execução a partir da raiz do projeto.
-
-### 1. Clonar o repositório
-
-```powershell
-git clone https://github.com/yasminbarbieri-data/data-quality-agent.git
-cd data-quality-agent
-```
-
-### 2. Criar e ativar um ambiente virtual
+1. Extraia o ZIP para uma pasta fácil de encontrar, por exemplo `Documentos\Projetos\data-quality-agent`.
+2. Abra essa pasta no VS Code. **A pasta correta é aquela que contém `app.py` e `pyproject.toml`.**
+3. Abra o terminal do VS Code em **Terminal → Novo Terminal**.
+4. Crie e ative um ambiente virtual. No PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Caso a política de execução do PowerShell impeça a ativação, é possível liberá-la somente para a sessão atual:
+Se o PowerShell bloquear a ativação, abra o terminal **Command Prompt (cmd)** e execute:
 
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-.\.venv\Scripts\Activate.ps1
+```cmd
+.venv\Scripts\activate.bat
 ```
 
-### 3. Instalar o projeto e as dependências de desenvolvimento
+5. Instale o projeto e as dependências:
 
 ```powershell
+python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 ```
 
-A instalação inclui as dependências de execução declaradas pelo projeto e o `pytest`, utilizado nos testes automatizados.
-
-O projeto requer Python 3.11 ou superior.
-
-## Execução
-
-### 1. Interface visual
-
-Para abrir a aplicação visual, execute a partir da raiz do projeto:
+6. Inicie o aplicativo:
 
 ```powershell
 streamlit run app.py
 ```
 
-O navegador abrirá a interface do **Data Quality Agent**. Envie um arquivo `.csv` ou `.xlsx` com as colunas esperadas para:
+O navegador normalmente abrirá `http://localhost:8501`. Mantenha o terminal aberto enquanto utiliza a aplicação.
 
-- ver indicadores de registros e ocorrências;
-- identificar quais regras precisam de atenção primeiro;
-- filtrar os problemas por regra, coluna ou texto;
-- visualizar uma prévia da planilha;
-- baixar o relatório completo ou somente o resultado filtrado.
+### Se o terminal abrir na pasta errada
 
-Os arquivos enviados são usados apenas durante a sessão da aplicação. Para demonstrações, use dados fictícios, anonimizados ou autorizados.
+Use o Explorer do VS Code: clique com o botão direito na pasta que contém `app.py` e escolha **Open in Integrated Terminal**. Não execute `pip install` na pasta externa que contém apenas a pasta do projeto.
 
-### 2. Analisar um arquivo com inconsistências pela linha de comando
+## Executar os testes
 
-Execute a partir da raiz do projeto:
-
-```powershell
-python -m data_quality_agent.cli data/samples/products_with_issues.csv
-```
-
-Resultado observado durante o desenvolvimento:
-
-```text
-=== DATA QUALITY AGENT ===
-Arquivo analisado: products_with_issues.csv
-Registros analisados: 6
-Ocorrências encontradas: 7
-Registros com problemas: 5 (83.33%)
-Registros sem problemas detectados: 1 (16.67%)
-Relatório salvo em: reports\issues.csv
-
-Ocorrências por regra:
-  R01: 1
-  R02: 2
-  R03: 1
-  R04: 1
-  R05: 1
-  R06: 1
-
-Regras com mais ocorrências:
-  R02: 2
-```
-
-Nesse exemplo, foram analisados 6 registros e identificadas 7 ocorrências. Cinco registros apresentaram pelo menos um problema, correspondendo a 83,33% dos registros analisados.
-
-A regra R02 apresentou o maior número de ocorrências, com 2 identificações. Um mesmo registro pode conter mais de uma ocorrência.
-
-O relatório é salvo por padrão em `reports/issues.csv`.
-
-### 3. Analisar um arquivo sem ocorrências detectadas pela linha de comando
-
-```powershell
-python -m data_quality_agent.cli data/samples/products_valid.csv --saida reports/valid_issues.csv
-```
-
-Resultado observado durante o desenvolvimento:
-
-```text
-=== DATA QUALITY AGENT ===
-Arquivo analisado: products_valid.csv
-Registros analisados: 5
-Ocorrências encontradas: 0
-Registros com problemas: 0 (0.00%)
-Registros sem problemas detectados: 5 (100.00%)
-Relatório salvo em: reports\valid_issues.csv
-```
-
-Nesse exemplo, os 5 registros passaram pelas regras de validação implementadas e nenhuma ocorrência foi identificada.
-
-O relatório é salvo em `reports/valid_issues.csv`.
-
-### 4. Definir o caminho do relatório
-
-O argumento `--saida` permite escolher onde salvar o CSV de ocorrências.
-
-```powershell
-python -m data_quality_agent.cli data/samples/products_with_issues.csv --saida reports/analise_produtos.csv
-```
-
-Se o caminho informado incluir diretórios inexistentes, a ferramenta cria os diretórios necessários para salvar o relatório.
-
-Os relatórios são gerados durante a execução e não são versionados pelo Git.
-
-## Testes automatizados
-
-Para executar toda a suíte de testes:
+Na pasta que contém `app.py`:
 
 ```powershell
 python -m pytest -v
 ```
 
-Os testes cobrem a leitura de arquivos locais e enviados pela interface, as validações, a geração de relatórios e o fluxo de processamento. Execute-os novamente após alterações para confirmar o estado atual do projeto.
+## Arquivos de demonstração
 
-## Limitações atuais
+- `data/samples/products_with_issues.csv`: inconsistências intencionais e exemplos de ajustes seguros, como espaços externos e categoria em caixa diferente. A contagem esperada é explícita para evitar divergências entre a tela, os testes e a documentação:
 
-- As regras de validação são definidas explicitamente no código.
-- As categorias permitidas correspondem ao conjunto de dados de exemplo e precisam ser adaptadas a outros contextos.
-- Não há integração com modelos de inteligência artificial.
-- A ausência de ocorrências significa apenas que os dados passaram pelas regras implementadas; não garante sua qualidade absoluta.
-- Os resultados apresentados correspondem aos arquivos de exemplo e não representam uma avaliação de dados de produção.
+| Regra | Ocorrências | Situação após ajustes seguros |
+|---|---:|---:|
+| R01 — campo obrigatório vazio | 1 | 1 permanece para revisão humana |
+| R02 — ID duplicado | 2 | 2 permanecem para revisão humana |
+| R03 — preço inválido | 1 | 1 permanece para revisão humana |
+| R04 — estoque inválido | 1 | 1 permanece para revisão humana |
+| R05 — categoria não permitida | 2 | 1 permanece; a outra é uma normalização inequívoca de `perifericos` para `Perifericos` |
+| R06 — data inválida | 1 | 1 permanece para revisão humana |
+| **Total** | **8** | **7 permanecem após 2 ajustes seguros** |
 
-## Próximas evoluções
+O outro ajuste seguro é a remoção dos espaços externos em `nome_produto`; ele é registrado no histórico, mas não elimina uma ocorrência porque o valor já não era considerado vazio.
 
-- Tornar a configuração das regras mais flexível.
-- Ampliar os testes para outros casos-limite.
-- Avaliar uma camada de IA para explicar ocorrências em linguagem natural, mantendo as validações determinísticas como base da análise.
+- `data/samples/products_valid.csv`: base sem problemas detectáveis pelas regras implementadas.
 
-## Dados de exemplo e privacidade
+## Acessibilidade e interface
 
-Os arquivos de demonstração utilizam dados sintéticos. Para testes e demonstrações públicas, prefira dados fictícios ou devidamente anonimizados. Não publique informações pessoais, confidenciais ou dados internos de empresas.
+- A interface usa tema de alto contraste, bordas visíveis e componentes nativos do Streamlit.
+- Gráficos e tabelas recebem descrições curtas para tecnologias assistivas.
+- Os controles mantêm rótulos visíveis e as ações de download identificam conteúdo e formato.
 
-## Licença
+## Estrutura principal
 
-A licença do projeto ainda não foi definida. Até que uma licença seja escolhida e adicionada ao repositório, não declare o projeto como licenciado sob uma licença específica de código aberto.
+```text
+app.py
+src/data_quality_agent/
+  ai_assistant.py
+  corrections.py
+  file_reader.py
+  pipeline.py
+  reporting.py
+  validators.py
+tests/
+data/samples/
+```
+
+## Escopo atual
+
+O aplicativo é um protótipo funcional de validação de dados para catálogo de produtos. Ele não é um corretor genérico para qualquer planilha, não conecta automaticamente a bancos de dados e não deve ser usado como substituto de validação de negócio ou revisão humana.

@@ -74,7 +74,7 @@ def validate_duplicate_ids(df: pd.DataFrame) -> list[dict]:
 
     return issues
 
-from datetime import datetime
+from datetime import date, datetime
 
 ALLOWED_CATEGORIES = {
     "Perifericos",
@@ -177,6 +177,9 @@ def validate_dates(df: pd.DataFrame) -> list[dict]:
             if pd.isna(value):
                 raise ValueError
 
+            # Datas vindas de Excel podem ser objetos date/datetime, não strings.
+            if isinstance(value, (datetime, date, pd.Timestamp)):
+                continue
             datetime.strptime(str(value).strip(), "%Y-%m-%d")
 
         except (ValueError, TypeError):

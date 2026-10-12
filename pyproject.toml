@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "data-quality-agent"
-version = "0.1.0"
-description = "Ferramenta de validacao de qualidade de dados tabulares"
+version = "1.0.0"
+description = "Diagnóstico, correções determinísticas auditáveis e análise assistida da qualidade de dados"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=3.0",
     "openpyxl>=3.1",
-    "streamlit>=1.50"
+    "streamlit>=1.65"
 ]
 
 [project.optional-dependencies]

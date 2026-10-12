@@ -24,8 +24,16 @@ def test_pipeline_finds_issues(tmp_path):
     result = run_pipeline(input_file, output_file)
 
     assert result["summary"]["total_registros"] == 6
-    assert result["summary"]["total_ocorrencias"] > 0
-    assert result["summary"]["registros_com_problemas"] > 0
+    assert result["summary"]["total_ocorrencias"] == 8
+    assert result["summary"]["registros_com_problemas"] == 6
+    assert result["summary"]["ocorrencias_por_regra"] == {
+        "R01": 1,
+        "R02": 2,
+        "R03": 1,
+        "R04": 1,
+        "R05": 2,
+        "R06": 1,
+    }
     assert output_file.exists()
 
 

@@ -197,3 +197,10 @@ def test_issue_line_number_uses_dataframe_position():
     )
 
     assert price_issue["linha"] == 3
+
+
+def test_excel_native_date_value_is_accepted():
+    from datetime import date
+
+    df = pd.DataFrame({"data_atualizacao": [date(2026, 10, 5)]})
+    assert validate_dates(df) == []

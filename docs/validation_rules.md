@@ -74,4 +74,6 @@ Os resultados serão comparados com os problemas conhecidos dos arquivos de test
 ## 7. Dados de teste
 
 - `products_valid.csv`: contém cinco registros que devem passar pelas regras.
-- `products_with_issues.csv`: contém problemas intencionais para verificar o funcionamento das validações.
+- `products_with_issues.csv`: contém seis registros e oito ocorrências intencionais: R01=1, R02=2, R03=1, R04=1, R05=2 e R06=1.
+
+Na cópia tratada desse arquivo, dois ajustes seguros devem constar no histórico da linha física 2: a remoção de espaços externos de `nome_produto` e a normalização inequívoca de `categoria` para `Perifericos`. Somente o segundo resolve uma ocorrência (R05), portanto **sete ocorrências permanecem** para revisão humana. O arquivo de origem deve continuar inalterado.
